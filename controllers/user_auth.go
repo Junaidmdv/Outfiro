@@ -17,20 +17,14 @@ var (
 	ErrInternalServer = errors.New("internal server error")
 )
 
-type OtpData struct {
-	Value string `json:"otp"`
-}
-
-var usersignup models.SignuPlayload
-
 func UserSignup(c *gin.Context) {
+	var usersignup models.SignuPlayload
 	if err := c.BindJSON(&usersignup); err != nil {
 		c.JSON(400, gin.H{
 			"error": "Invalide code",
 		})
 		return
 	}
-	//checks email is in the valid formate
 	if result := utils.IsEmailValid(usersignup.Email); !result {
 		c.JSON(400, gin.H{
 			"error": "Invalid email formate",
@@ -49,9 +43,7 @@ func UserSignup(c *gin.Context) {
 			"error": "password and confirm password do not match",
 		})
 		return
-
 	}
-	//check the email is already existed in the database
 	var count int64
 	if err := database.DB.Model(&models.Users{}).Where("email = ?", usersignup.Email).Count(&count); err != nil {
 		c.JSON(500, "Internal server error")
@@ -78,7 +70,6 @@ func UserSignup(c *gin.Context) {
 		})
 		return
 	}
-
 	email := strings.Split(usersignup.Email, ",")
 	err = utils.SendEmail(email, otp.Value)
 	if err != nil {
@@ -88,7 +79,10 @@ func UserSignup(c *gin.Context) {
 		return
 	}
 	otp.Email = email[0]
-	if err := database.DB.Save(&otp); err != nil {
+	if err := database.DB.Create(&usersignup); err != nil {
+		c.JSON(500, gin.H{"error": "failed to add the otp details"})
+	}
+	if err := database.DB.Create(&otp); err != nil {
 		c.JSON(500, gin.H{"error": "failed to add the otp details"})
 	}
 	c.JSON(200, gin.H{
@@ -97,10 +91,8 @@ func UserSignup(c *gin.Context) {
 	})
 }
 
-
-
 func VerifyOtp(c *gin.Context) {
-	var verifyotp OtpData
+	var verifyotp models.OtpVerifier
 	if err := c.BindJSON(&verifyotp); err != nil {
 		c.JSON(400, gin.H{
 			"error": "Invalid code formate ",
@@ -111,17 +103,24 @@ func VerifyOtp(c *gin.Context) {
 	if err := otp.Verifyotp(verifyotp.Value); err != nil {
 		c.JSON(400, gin.H{"errors": err})
 	}
-
 	var user models.Users
-	user.FirstName = usersignup.Name
-	user.Email = usersignup.Email
-	user.Password = usersignup.Password
-	if err := database.DB.Save(&user); err != nil {
-		c.JSON(500, gin.H{"error": "Failed add user data"})
+	var SingnupData models.SignuPlayload
+	if err := database.DB.Find("email", otp.Email).Error; err != nil {
+		c.JSON(500, gin.H{
+			"error": "failed to sigup details",
+		})
 	}
 
+	user.FirstName = SingnupData.FirstName
+	user.LastName = SingnupData.LastName
+	user.Email = SingnupData.Email
+	user.Password = SingnupData.Password
+
+	if err := database.DB.Create(&user); err != nil {
+		c.JSON(500, gin.H{"error": "Failed add user data"})
+	}
 	c.JSON(200, gin.H{
-		"status": "seccess",
+		"status": "success",
 		"user":   user,
 	})
 

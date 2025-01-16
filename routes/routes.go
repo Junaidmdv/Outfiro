@@ -35,18 +35,13 @@ func UserRoutes(routes *gin.Engine) {
 	{
 		user.POST("signup", controllers.UserSignup)
 		user.POST("sigup", controllers.UserLogin)
-
-		//
 		user.POST("signup/varify-otp", controllers.VerifyOtp)
 		user.POST("login", controllers.UserLogin)
-		// gogole and facebook
 		user.GET("/search", controllers.SearchProduct)
 		user.GET("/categories", controllers.GetCategories)
-		
 		user.GET("/products", controllers.GetProducts)
 		user.GET("/product/:id", controllers.GetProduct)
-		// user.GET("/product-review/:id", controllers.GetProductReview)
-		// user.POST("/product-review/:id", controllers.AddReview)
+		
 	}
 
 }

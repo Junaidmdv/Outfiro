@@ -11,4 +11,5 @@ func Migrate() {
 	database.DB.AutoMigrate(&Categories{})
 	database.DB.AutoMigrate(&Admin{})
 	database.DB.AutoMigrate(&utils.OTP{})
+	database.DB.AutoMigrate(&SignuPlayload{})
 }
