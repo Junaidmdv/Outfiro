@@ -1,12 +1,21 @@
 package main
 
-import "github.com/gin-gonic/gin"
+import (
+	"outfiro/database"
+	"outfiro/models"
+	"outfiro/routes"
+
+	"github.com/gin-gonic/gin"
+)
 
 func main() {
+	router := gin.Default()
+	database.LoadEnv()
+	database.DbConnection()
+	models.Migrate()
 
-	r := gin.Default()
+	routes.AdminRoutes(router)
+	routes.UserRoutes(router)
 
-	
-	r.Run()
-
+	router.Run()
 }
