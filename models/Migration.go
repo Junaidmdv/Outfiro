@@ -2,7 +2,6 @@ package models
 
 import (
 	"outfiro/database"
-	"outfiro/utils"
 )
 
 func Migrate() {
@@ -10,6 +9,6 @@ func Migrate() {
 	database.DB.AutoMigrate(&Products{})
 	database.DB.AutoMigrate(&Categories{})
 	database.DB.AutoMigrate(&Admin{})
-	database.DB.AutoMigrate(&utils.OTP{})
+	database.DB.AutoMigrate(&OtpRecord{})
 	database.DB.AutoMigrate(&SignuPlayload{})
 }

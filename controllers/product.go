@@ -1,11 +1,15 @@
 package controllers
 
 import (
+	"fmt"
+	"net/http"
 	"outfiro/database"
 	"outfiro/models"
+	"outfiro/utils"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
 )
 
@@ -25,17 +29,18 @@ func GetProducts(c *gin.Context) {
 		},
 	})
 }
-
 func GetProduct(c *gin.Context) {
+	fmt.Println("Product Page")
 	product_id := c.Param("id")
 	id, err := strconv.Atoi(product_id)
 	if err != nil {
-		c.JSON(400, gin.H{
-			"error": "invalid product id",
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"code":   "StatusBadRequest(400)",
+			"error":  "Invalid product id.Provide valid product id",
 		})
 		return
 	}
-
 	var product models.Products
 	result := database.DB.First(&product, id)
 	if result.Error != nil {
@@ -44,12 +49,13 @@ func GetProduct(c *gin.Context) {
 				"status": "error",
 				"error":  "product not found",
 			})
+			return
 		} else {
 			c.JSON(500, gin.H{
 				"error": "failed to fetch the product",
 			})
+			return
 		}
-		return
 	}
 	c.JSON(200, gin.H{
 		"status":  "success",
@@ -58,9 +64,7 @@ func GetProduct(c *gin.Context) {
 }
 
 func DeleteProduct(c *gin.Context) {
-	//admin check
-	ProductId := ("id")
-	var product models.Products
+	ProductId := c.Param("id")
 	id, err := strconv.Atoi(ProductId)
 	if err != nil {
 		c.JSON(400, gin.H{
@@ -68,6 +72,7 @@ func DeleteProduct(c *gin.Context) {
 		})
 		return
 	}
+	var product models.Products
 	result := database.DB.First(&product, id)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
@@ -98,63 +103,144 @@ func DeleteProduct(c *gin.Context) {
 }
 
 func EditProduct(c *gin.Context) {
-	//otherise the admin
-	ProductId := c.Param("id")
-	id, err := strconv.Atoi(ProductId)
+	product_id := c.Param("id")
+	id, err := strconv.Atoi(product_id)
 	if err != nil {
 		c.JSON(400, gin.H{
 			"status":  "error",
-			"message": "Invalid product_id",
+			"code":    "StatusBadRequest(400)",
+			"message": "missing product id",
 		})
 		return
-	}
-	var UpadatProduct models.Products
-	if err := c.BindJSON(&UpadatProduct); err != nil {
-		c.JSON(400, gin.H{
-			"error": "Invalid formate",
-		})
-		return
-
 	}
 	var product models.Products
 	result := database.DB.First(&product, id)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
-			c.JSON(404, gin.H{"error": "product not found"})
+			c.JSON(404, gin.H{
+				"status":  "error",
+				"code":    "StatusNotFound(404)",
+				"message": "Product is not availible",
+			})
 		} else {
-			c.JSON(500, gin.H{"error": "Internal server error"})
+			c.JSON(500, gin.H{
+				"status":  "error",
+				"code":    "StatusInternalServerError",
+				"message": "Database error",
+			})
 		}
 		return
 	}
-	product.ProductName = UpadatProduct.ProductName
-	product.Status = UpadatProduct.Status
-	product.Quntity = UpadatProduct.Quntity
-	product.Discount = UpadatProduct.Discount
 
-	result = database.DB.Save(&product)
-	if result.Error != nil {
-		c.JSON(500, gin.H{
-			"error": "Internal server error",
+	var update models.UpadatProduct
+	if err := c.BindJSON(&update); err != nil {
+		c.JSON(400, gin.H{
+			"status": "error",
+			"error":  "invalid inpute formate",
+		})
+	}
+	validate := validator.New()
+	validate.RegisterValidation("alpha_space", utils.ValidateAlphaNumSpace)
+
+	if err := validate.Struct(&update); err != nil {
+		errors := utils.UserFormateError(err.(validator.ValidationErrors))
+		c.JSON(400, gin.H{
+			"status":  "error",
+			"code":    "StatusBadRequest",
+			"message": errors,
+		})
+		return
+	}
+	fmt.Println(update)
+
+	updateProduct := make(map[string]interface{})
+
+	if update.ProductName != "" {
+		updateProduct["product_name"] = update.ProductName
+	}
+	if update.Price != 0 {
+		updateProduct["price"] = update.Price
+
+	}
+	if update.Quantity != 0 {
+		updateProduct["quantity"] = update.Quantity
+	}
+	if update.Status != "" {
+		updateProduct["status"] = update.Status
+	}
+	fmt.Println(len(updateProduct))
+	fmt.Println(updateProduct)
+	if len(updateProduct) == 0 {
+		c.JSON(400, gin.H{
+			"status":  "error",
+			"code":    "StatusBadRequest(400)",
+			"message": "No valid fields to update",
 		})
 		return
 	}
 
-	c.JSON(200, gin.H{
+	if err := database.DB.Model(&product).Updates(updateProduct).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"code":    "StatusInternalServerError(500)",
+			"message": "Failed to update product",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
 		"status":  "success",
-		"message": "product updated success",
-		"Data":    product,
+		"code":    "statusOk(200)",
+		"message": "Product details updated",
+		"data":    product,
 	})
-
 }
 
 func AddProduct(c *gin.Context) {
 	var req models.ProductRequest
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(400, gin.H{"error": "Invalid code"})
+		c.JSON(400, gin.H{
+			"status":  "error",
+			"message": "Please provide valid input",
+			"error":   err.Error(),
+		})
 		return
 	}
+	validate := validator.New()
+	validate.RegisterValidation("alpha_space", utils.ValidateAlphaNumSpace)
+	if err := validate.Struct(&req); err != nil {
+		fmt.Println(err.Error())
+		errors := utils.UserFormateError(err.(validator.ValidationErrors))
+		fmt.Println(errors)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"code":    "http.StatusBadRequest(400)",
+			"message": errors,
+		})
+		return
+	}
+
+	var NewProduct models.Products
 	var category models.Categories
-	if err := database.DB.Where("category_name = ?", req.CategoriesName).First(&category).Error; err != nil {
+	var count int64
+	if err := database.DB.Model(NewProduct).Where("product_name=? and size=?", req.ProductName,req.Size).Count(&count).Error; err != nil {
+		c.JSON(500, gin.H{
+			"error": "error in the database",
+		})
+		return
+	}
+
+	if count > 0 {
+		c.JSON(http.StatusConflict, gin.H{
+
+			"status":  "error",
+			"code":    "StatusConflict(409)",
+			"message": "product already exist",
+		})
+		return
+	}
+
+	fmt.Println(req.CategoriesName)
+	if err := database.DB.Where("category_name=?", req.CategoriesName).First(&category).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(400, gin.H{"error": "category not availible"})
 		} else {
@@ -162,8 +248,7 @@ func AddProduct(c *gin.Context) {
 		}
 		return
 	}
-	//crete product
-	NewProduct := models.Products{
+	NewProduct = models.Products{
 		ProductName: req.ProductName,
 		Description: req.Description,
 		CategoryId:  category.ID,
@@ -171,7 +256,7 @@ func AddProduct(c *gin.Context) {
 		Status:      req.Status,
 		Size:        req.Size,
 		Quntity:     req.Quntity,
-		Discount:    req.Discount,
+		ImageUrl:    req.ImageUrl,
 	}
 	if err := database.DB.Create(&NewProduct).Error; err != nil {
 		c.JSON(500, gin.H{"error": "Internal server error"})
@@ -187,19 +272,39 @@ func AddProduct(c *gin.Context) {
 }
 
 func SearchProduct(c *gin.Context) {
-	query := c.Query("Query")
+	query := c.Query("product")
 	if query == "" {
 		c.JSON(400, gin.H{"error": "queri paramters required"})
 		return
 	}
+	fmt.Println(query)
 	var products []models.Products
-	result := database.DB.Where("product_name LIKE ? OR description LIKE ? OR categories.category_name LIKE ?",
+	result := database.DB.Where("products.product_name LIKE ? OR products.description LIKE ? OR categories.category_name LIKE ?",
 		"%"+query+"%", "%"+query+"%", "%"+query+"%").
-		Joins("JOIN categories ON products.CategoryID = categories.ID").
+		Joins("JOIN categories ON products.category_id = categories.id").
 		Find(&products)
+	fmt.Println(result)
 
 	if result.Error != nil {
-		c.JSON(500, gin.H{"error": "Error searching for products"})
+		if result.Error == gorm.ErrRecordNotFound {
+			c.JSON(404, gin.H{
+				"status":  "error",
+				"code":    "StatusNotFound",
+				"message": "product not found",
+			})
+			return
+		} else {
+			c.JSON(500, gin.H{"error": "Error searching for products"})
+			return
+		}
+
+	}
+	if len(products) == 0 {
+		c.JSON(404, gin.H{
+			"status":  "error",
+			"code":    "StatusNotFound(404)",
+			"message": "Product is found",
+		})
 		return
 	}
 

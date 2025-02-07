@@ -5,7 +5,6 @@ import (
 	"outfiro/database"
 	"outfiro/models"
 	"outfiro/utils"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -19,21 +18,19 @@ func AdminSignup(c *gin.Context) {
 		return
 	}
 	validate := validator.New()
-	if err := validate.RegisterValidation(" ContainsSpecialChars", models.ContainsSpecialChars); err != nil {
-		fmt.Println("Erron register custom validation ")
-	}
 	if err := validate.Struct(&admin); err != nil {
 		c.JSON(400, gin.H{
-			"statsu": "error",
-			"error":  fmt.Sprintf("%v", err),
+			"status": "error",
+			"error":  err.Error(),
 		})
 		return
 	}
 	var count int64
-	if err := database.DB.Model(&models.Admin{}).Where("admin=? or email=?", admin.FirstName, admin.Email).Count(&count).Error; err != nil {
+	if err := database.DB.Model(&models.Admin{}).Where("email=?", admin.Email).Count(&count).Error; err != nil {
 		c.JSON(500, gin.H{"error": "failed to check admin existed"})
+		return
 	}
-	if count > 0 {
+	if count != 0 {
 		c.JSON(409, gin.H{"error": "admin already exist"})
 		return
 	}
@@ -45,7 +42,7 @@ func AdminSignup(c *gin.Context) {
 		return
 	}
 	admin.Password = HashedPassword
-	if err := database.DB.Create(&admin); err != nil {
+	if err := database.DB.Create(&admin).Error; err != nil {
 		c.JSON(500, gin.H{"error": "failed to signup"})
 		return
 	}
@@ -62,10 +59,13 @@ func AdminLogin(c *gin.Context) {
 	}
 	validate := validator.New()
 	if err := validate.Struct(&adminlogin); err != nil {
-		c.JSON(400, gin.H{"error": err})
+		c.JSON(400, gin.H{
+			"status": "error",
+			"error":  err.Error()})
+		return
 	}
 	var admin models.Admin
-	result := database.DB.Where("email=?", admin.Email)
+	result := database.DB.Where("email=?", adminlogin.Email).First(&admin)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			c.JSON(404, gin.H{"error": "email not found"})
@@ -74,127 +74,25 @@ func AdminLogin(c *gin.Context) {
 		}
 		return
 	}
-	err := utils.VerifyPassword(admin.Password, adminlogin.Password)
-	if err != nil {
+	fmt.Println(admin.Password, adminlogin.Password)
+	if err := utils.VerifyPassword(admin.Password, adminlogin.Password); err != nil {
 		c.JSON(400, gin.H{"error": "Invalid user password"})
 		return
 	}
-	token, err := utils.CreateToken(admin.ID, admin.Email, admin.Role)
+	
+	SignedToken, err := utils.GenerateToken(admin.Email,admin.Role)
 	if err != nil {
-		c.JSON(500, gin.H{"error": "failed to create token"})
-		return
-	}
-	c.Header("Authorization", "Bearer"+token)
-
-	c.JSON(200, gin.H{"": "admin login succesful"})
-
-}
-
-func GetUsers(c *gin.Context) {
-	var users []models.Users
-	if err := database.DB.Select("id", "first_name", "last_name", "email", "address").Find(&users).Error; err != nil {
-		c.JSON(500, gin.H{"error": "failed to fetch the users"})
-	}
-	c.JSON(200, gin.H{
-		"status":  "error",
-		"message": "user fetched succesful",
-		"data": gin.H{
-			"users": users,
-		},
-	})
-}
-
-func GetUser(c *gin.Context) {
-	userIdStr := c.Param("id")
-	if userIdStr == " " {
-		c.JSON(400, gin.H{"error": "user id is not availible"})
-		return
-	}
-	user_id, err := strconv.Atoi(userIdStr)
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invlid id formate"})
-	}
-	var user models.Users
-	result := database.DB.First(&user, user_id)
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			c.JSON(400, gin.H{"error": "user id is not availible"})
-			return
-		} else {
-			c.JSON(500, gin.H{"error": "failed fetch id"})
-			return
-		}
-	}
-	c.JSON(200, gin.H{
-		"status": "success",
-		"data": gin.H{
-			"user": user,
-		},
-	})
-}
-
-func BlockUser(c *gin.Context) {
-	userIdStr := c.Param("id")
-	if userIdStr == " " {
-		c.JSON(400, gin.H{"error": "user id is not availible"})
-		return
-	}
-	user_id, err := strconv.Atoi(userIdStr)
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invlid id formate"})
-	}
-	var user models.Users
-	result := database.DB.First(&user, user_id)
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			c.JSON(400, gin.H{"error": "user id is not availible"})
-			return
-		} else {
-			c.JSON(500, gin.H{"error": "failed fetch id"})
-			return
-		}
-	}
-	user.IsBlocked = true
-	if err := database.DB.Save(&user); err != nil {
-		c.JSON(500, gin.H{"error": "failed to block the user"})
-		return
+		c.JSON(500, gin.H{
+			"status":  "error",
+			"message": "Failed to create token",
+			"code":    "ErrInternalServer(500)",
+		})
 	}
 	c.JSON(200, gin.H{
 		"status":  "success",
-		"message": "user account blocked",
-	})
-
-}
-
-func UnblockUsers(c *gin.Context) {
-	userIdStr := c.Param("id")
-	if userIdStr == " " {
-		c.JSON(400, gin.H{"error": "user id is not availible"})
-		return
-	}
-	user_id, err := strconv.Atoi(userIdStr)
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invlid id formate"})
-	}
-	var user models.Users
-	result := database.DB.First(&user, user_id)
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			c.JSON(400, gin.H{"error": "user id is not availible"})
-			return
-		} else {
-			c.JSON(500, gin.H{"error": "failed fetch id"})
-			return
-		}
-	}
-	user.IsBlocked = false
-	if err := database.DB.Save(&user); err != nil {
-		c.JSON(500, gin.H{"error": "failed to block the user"})
-		return
-	}
-	c.JSON(200, gin.H{
-		"status":  "success",
-		"message": "user account unblocked",
+		"message": "User login succesful",
+		"code":    "statusOk(200)",
+		"token":   SignedToken,
 	})
 
 }

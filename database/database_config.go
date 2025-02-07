@@ -13,7 +13,6 @@ import (
 
 var DB *gorm.DB
 
-
 type Connect struct {
 	Host     string
 	User     string
@@ -24,15 +23,15 @@ type Connect struct {
 	TimeZone string
 }
 
-func LoadEnv(){
+func LoadEnv() {
 	if err := godotenv.Load(); err != nil {
 		fmt.Println("this is env error load")
 	}
 
 }
- 
-func DbConnection()  {
-	
+
+func DbConnection() {
+
 	DbConfig := Connect{
 		Host:     os.Getenv("DB_HOST"),
 		User:     os.Getenv("DB_USERNAME"),
@@ -48,11 +47,11 @@ func DbConnection()  {
 	)
 	fmt.Printf("%s", dsn)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
+		Logger: logger.Default.LogMode(logger.Info),
 	})
 	if err != nil {
 		log.Fatal("database connection error")
 	}
-	
-	DB=db
+
+	DB = db
 }

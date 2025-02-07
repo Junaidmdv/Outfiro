@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"outfiro/database"
 	"outfiro/models"
 	"outfiro/routes"
@@ -11,11 +12,12 @@ import (
 func main() {
 	router := gin.Default()
 	database.LoadEnv()
+
 	database.DbConnection()
 	models.Migrate()
 
 	routes.AdminRoutes(router)
 	routes.UserRoutes(router)
 
-	router.Run()
+	router.Run(os.Getenv("PORT"))
 }
