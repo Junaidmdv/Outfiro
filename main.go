@@ -4,8 +4,7 @@ import (
 	"os"
 	"outfiro/database"
 	"outfiro/models"
-	"outfiro/routes"
-
+	 "outfiro/routes"
 	"github.com/gin-gonic/gin"
 )
 

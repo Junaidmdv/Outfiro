@@ -1,9 +1,8 @@
 package routes
 
 import (
-	"outfiro/controllers"
 	middleware "outfiro/middlewares"
-
+    "outfiro/controllers"
 	"github.com/gin-gonic/gin"
 )
 
@@ -35,7 +34,6 @@ func UserRoutes(routes *gin.Engine) {
 	user := routes.Group("api/v1/user")
 	{
 		user.POST("/signup", controllers.UserSignup)
-		user.POST("/signup/send-otp", controllers.SendOtp)
 		user.POST("/signup/resend-otp", controllers.ResendOtp)
 		user.POST("signup/varify-otp", controllers.VerifyOtp)
 		user.POST("/login", controllers.UserLogin)

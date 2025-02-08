@@ -14,8 +14,9 @@ import (
 )
 
 func GetProducts(c *gin.Context) {
-	var products []models.Products
-	if err := database.DB.Find(&products).Error; err != nil {
+	var products models.Products
+	var productsRes []models.ProductResponce
+	if err := database.DB.Model(&products).Find(&productsRes).Error; err != nil {
 		c.JSON(500, gin.H{
 			"error": "fail to fetch the product",
 		})
@@ -25,7 +26,7 @@ func GetProducts(c *gin.Context) {
 		"status":  "success",
 		"message": "product succesfully fetched",
 		"data": gin.H{
-			"product": products,
+			"product": productsRes,
 		},
 	})
 }
@@ -42,7 +43,8 @@ func GetProduct(c *gin.Context) {
 		return
 	}
 	var product models.Products
-	result := database.DB.First(&product, id)
+	var productRes models.ProductResponce
+	result := database.DB.Model(product).Where("id=?",id).First(&productRes)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			c.JSON(404, gin.H{
@@ -59,7 +61,7 @@ func GetProduct(c *gin.Context) {
 	}
 	c.JSON(200, gin.H{
 		"status":  "success",
-		"product": product,
+		"product":productRes,
 	})
 }
 
@@ -222,7 +224,7 @@ func AddProduct(c *gin.Context) {
 	var NewProduct models.Products
 	var category models.Categories
 	var count int64
-	if err := database.DB.Model(NewProduct).Where("product_name=? and size=?", req.ProductName,req.Size).Count(&count).Error; err != nil {
+	if err := database.DB.Model(NewProduct).Where("product_name=? and size=?", req.ProductName, req.Size).Count(&count).Error; err != nil {
 		c.JSON(500, gin.H{
 			"error": "error in the database",
 		})

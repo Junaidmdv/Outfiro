@@ -35,7 +35,7 @@ type Users struct {
 }
 type Admin struct {
 	gorm.Model
-	FirstName string `gorm:"not null" json:"firstname" validate:"required,alpha_space"`
+	FirstName string `gorm:"not null" json:"firstname" validate:"required"`
 	LastName  string `gorm:"not null" json:"lastname"  validate:"omitempty"`
 	Email     string `gorm:"not null;unique_index" json:"email"  validate:"required,email"`
 	Address   string `json:"address"  validate:"omitempty,min=6"`

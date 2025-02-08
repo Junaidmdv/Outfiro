@@ -78,3 +78,13 @@ type ResetPassword struct {
 	Password        string `json:"password" validate:"min=8,max=32,alphanum"`
 	ConfirmPassword string `json:"confirm_password" validate:"alphanum,eqfield=Password"`
 }
+
+type ProductResponce struct{
+	ProductName string  
+	Description string  
+	ImageUrl    string   
+	CategoryId  uint   
+	Price       float64 
+	Status      string  
+	Size        string  
+}

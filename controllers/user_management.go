@@ -19,6 +19,7 @@ func GetUsers(c *gin.Context) {
 			"code":    "StatusInternalServerError(500)",
 			"message": "Failed to fetch user details",
 		})
+		return
 	}
 	c.JSON(200, gin.H{
 		"status":  "error",
