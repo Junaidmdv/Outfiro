@@ -13,6 +13,12 @@ import (
 	"gorm.io/gorm"
 )
 
+// type StockStatus string
+// const(
+// 	InStock StockStatus="In Stock"
+// 	OutOfStock StockStatus="Out of Stock"
+// )
+
 func GetProducts(c *gin.Context) {
 	var products models.Products
 	var productsRes []models.ProductResponce
@@ -22,6 +28,7 @@ func GetProducts(c *gin.Context) {
 		})
 		return
 	}
+
 	c.JSON(200, gin.H{
 		"status":  "success",
 		"message": "product succesfully fetched",
@@ -44,7 +51,7 @@ func GetProduct(c *gin.Context) {
 	}
 	var product models.Products
 	var productRes models.ProductResponce
-	result := database.DB.Model(product).Where("id=?",id).First(&productRes)
+	result := database.DB.Model(product).Where("id=?", id).First(&productRes)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			c.JSON(404, gin.H{
@@ -61,7 +68,7 @@ func GetProduct(c *gin.Context) {
 	}
 	c.JSON(200, gin.H{
 		"status":  "success",
-		"product":productRes,
+		"product": productRes,
 	})
 }
 
@@ -133,6 +140,7 @@ func EditProduct(c *gin.Context) {
 		}
 		return
 	}
+	fmt.Println(product)
 
 	var update models.UpadatProduct
 	if err := c.BindJSON(&update); err != nil {
@@ -164,14 +172,13 @@ func EditProduct(c *gin.Context) {
 		updateProduct["price"] = update.Price
 
 	}
-	if update.Quantity != 0 {
-		updateProduct["quantity"] = update.Quantity
+	if update.StockQuantity != 0 {
+		updateProduct["stock_quantity"] = update.StockQuantity
 	}
-	if update.Status != "" {
-		updateProduct["status"] = update.Status
+	if update.Discount != 0 {
+		updateProduct["discount"] = update.Discount
 	}
-	fmt.Println(len(updateProduct))
-	fmt.Println(updateProduct)
+
 	if len(updateProduct) == 0 {
 		c.JSON(400, gin.H{
 			"status":  "error",
@@ -251,14 +258,14 @@ func AddProduct(c *gin.Context) {
 		return
 	}
 	NewProduct = models.Products{
-		ProductName: req.ProductName,
-		Description: req.Description,
-		CategoryId:  category.ID,
-		Price:       req.Price,
-		Status:      req.Status,
-		Size:        req.Size,
-		Quntity:     req.Quntity,
-		ImageUrl:    req.ImageUrl,
+		ProductName:   req.ProductName,
+		Description:   req.Description,
+		CategoryId:    category.ID,
+		Discount:      req.Discount,
+		Price:         req.Price,
+		Size:          req.Size,
+		StockQuantity: req.StockQuantity,
+		ImageUrl:      req.ImageUrl,
 	}
 	if err := database.DB.Create(&NewProduct).Error; err != nil {
 		c.JSON(500, gin.H{"error": "Internal server error"})
@@ -280,8 +287,8 @@ func SearchProduct(c *gin.Context) {
 		return
 	}
 	fmt.Println(query)
-	var products []models.Products
-	result := database.DB.Where("products.product_name LIKE ? OR products.description LIKE ? OR categories.category_name LIKE ?",
+	var products []models.ProductResponce
+	result := database.DB.Model(&models.Products{}).Where("products.product_name LIKE ? OR products.description LIKE ? OR categories.category_name LIKE ?",
 		"%"+query+"%", "%"+query+"%", "%"+query+"%").
 		Joins("JOIN categories ON products.category_id = categories.id").
 		Find(&products)
@@ -317,4 +324,101 @@ func SearchProduct(c *gin.Context) {
 			"products": products,
 		},
 	})
+}
+
+func FilterProduct(c *gin.Context) {
+	filter := c.Query("products")
+
+	var Product []models.ProductResponce
+
+	switch filter {
+	case "name_asc":
+		ProductPtr, err := ProductAsc()
+		if err != nil {
+			c.JSON(400, gin.H{"error": "Failed to fetch product data"})
+			return
+		}
+		fmt.Println(&ProductPtr)
+		Product = *ProductPtr
+	case "name_desc":
+		ProductPtr, err := ProductDesc()
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Failed to fetch product data"})
+			return
+		}
+		fmt.Println(*ProductPtr)
+		Product = *ProductPtr
+	case "lowtohigh":
+		ProductPtr, err := PriceLowTohigh()
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Failed to fetch product data"})
+			return
+		}
+		Product = *ProductPtr
+	case "hightolow":
+		ProductPtr, err := PriceHignToLow()
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Failed to fetch product data"})
+			return
+		}
+		Product = *ProductPtr
+	case "new_arrivals":
+		ProductPtr, err := NewArrivals()
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Failed to fetch product data"})
+			return
+		}
+		
+		Product = *ProductPtr
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid queri"})
+		return
+
+	}
+	c.JSON(200, gin.H{
+		"status":  "success",
+		"details": "product data filtered success",
+		"data":    Product,
+	})
+
+}
+
+func ProductAsc() (*[]models.ProductResponce, error) {
+	var Product []models.ProductResponce
+	if err := database.DB.Model(&models.Products{}).Order("product_name").Find(&Product).Error; err != nil {
+		return nil, err
+	}
+	return &Product, nil
+}
+
+func ProductDesc() (*[]models.ProductResponce, error) {
+	var Product []models.ProductResponce
+	if err := database.DB.Model(&models.Products{}).Order("product_name DESC").Find(&Product).Error; err != nil {
+		return nil, err
+	}
+	return &Product, nil
+}
+
+func PriceLowTohigh() (*[]models.ProductResponce, error) {
+	var Product []models.ProductResponce
+	if err := database.DB.Model(&models.Products{}).Order("price").Find(&Product).Error; err != nil {
+		return nil, err
+	}
+	return &Product, nil
+}
+
+func PriceHignToLow() (*[]models.ProductResponce, error) {
+	var Product []models.ProductResponce
+	if err := database.DB.Model(&models.Products{}).Order("price Desc").Find(&Product).Error; err != nil {
+		return nil, err
+	}
+	return &Product, nil
+}
+
+func NewArrivals() (*[]models.ProductResponce, error) {
+	var Product []models.ProductResponce
+	if err := database.DB.Model(&models.Products{}).Order("created_at desc").Find(&Product).Error; err != nil {
+		return nil, err
+	}
+	return &Product, nil
 }

@@ -17,11 +17,14 @@ func AdminSignup(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "invalid input formate"})
 		return
 	}
+	fmt.Println(admin)
 	validate := validator.New()
+	validate.RegisterValidation("password", utils.ValidPassword)
 	if err := validate.Struct(&admin); err != nil {
+		errors := utils.UserFormateError(err.(validator.ValidationErrors))
 		c.JSON(400, gin.H{
 			"status": "error",
-			"error":  err.Error(),
+			"error":  errors,
 		})
 		return
 	}
@@ -57,13 +60,6 @@ func AdminLogin(c *gin.Context) {
 	if err := c.BindJSON(&adminlogin); err != nil {
 		c.JSON(400, gin.H{"error": "invalid input formate"})
 	}
-	validate := validator.New()
-	if err := validate.Struct(&adminlogin); err != nil {
-		c.JSON(400, gin.H{
-			"status": "error",
-			"error":  err.Error()})
-		return
-	}
 	var admin models.Admin
 	result := database.DB.Where("email=?", adminlogin.Email).First(&admin)
 	if result.Error != nil {
@@ -79,8 +75,8 @@ func AdminLogin(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "Invalid user password"})
 		return
 	}
-	
-	SignedToken, err := utils.GenerateToken(admin.Email,admin.Role)
+
+	SignedToken, err := utils.GenerateToken(admin.ID, admin.Email, admin.Role)
 	if err != nil {
 		c.JSON(500, gin.H{
 			"status":  "error",

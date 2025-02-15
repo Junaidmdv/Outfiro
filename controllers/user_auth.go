@@ -12,7 +12,9 @@ import (
 	"outfiro/utils"
 	"strings"
 	"time"
+
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
 )
 
@@ -34,21 +36,35 @@ func UserSignup(c *gin.Context) {
 		})
 		return
 	}
-	if result := utils.IsEmailValid(usersignup.Email); !result {
+	// if result := utils.IsEmailValid(usersignup.Email); !result {
+	// 	c.JSON(400, gin.H{
+	// 		"error": "Invalid email formate",
+	// 	})
+	// 	return
+	// }
+
+	// if len(usersignup.Password) < 8 {
+	// 	c.JSON(400, gin.H{
+	// 		"status":  "error",
+	// 		"code":    400,
+	// 		"details": "Password must be atleast 8 charectar long",
+	// 	})
+	// 	return
+	// }
+	validate := validator.New()
+	validate.RegisterValidation("phone_number", utils.ValidPhoneNum)
+	validate.RegisterValidation("password", utils.ValidPassword)
+	if err := validate.Struct(&usersignup); err != nil {
+		errors := utils.UserFormateError(err.(validator.ValidationErrors))
 		c.JSON(400, gin.H{
-			"error": "Invalid email formate",
+			"status":  "error",
+			"code":    "StatusBadRequest(400)",
+			"details": "validation error occur",
+			"errors":  errors,
 		})
 		return
 	}
 
-	if len(usersignup.Password) < 8 {
-		c.JSON(400, gin.H{
-			"status":  "error",
-			"code":    400,
-			"details": "Password must be atleast 8 charectar long",
-		})
-		return
-	}
 	if usersignup.ConfirmPassword != usersignup.Password {
 		c.JSON(400, gin.H{
 			"status":  "error",
@@ -75,7 +91,30 @@ func UserSignup(c *gin.Context) {
 		c.JSON(409, gin.H{
 			"status":  "error",
 			"code":    "409",
-			"details": "User already exist",
+			"details": "This email is already registered. Please log in or use a different email to sign up",
+		})
+		return
+	}
+
+	var NumExist bool
+	err = database.DB.Model(&user).
+		Select("count(*) > 0").
+		Where("phone_number=?", usersignup.PhoneNumber).
+		Scan(&NumExist).Error
+	if err != nil {
+		c.JSON(500, gin.H{
+			"status":  "error",
+			"code":    500,
+			"details": "Unexpected error occur on processing the request",
+		})
+		return
+	}
+	fmt.Println(NumExist)
+	if NumExist {
+		c.JSON(409, gin.H{
+			"status":  "error",
+			"code":    "409",
+			"details": "This phone number is already registered. Please log in or use a different number to sign up",
 		})
 		return
 	}
@@ -119,7 +158,7 @@ func UserSignup(c *gin.Context) {
 	}
 
 	var otp utils.OTP
-	otp.Email=usersignup.Email
+	otp.Email = usersignup.Email
 	if err := otp.GenerateOTP(6); err != nil {
 		c.JSON(500, gin.H{
 			"status":   "error",
@@ -154,15 +193,12 @@ func UserSignup(c *gin.Context) {
 		return
 	}
 
-
 	c.JSON(200, gin.H{
 		"status":   "success",
 		"code":     200,
 		"deatails": "user signup successful",
 	})
 }
-
-
 
 func ResendOtp(c *gin.Context) {
 	var req utils.OTP
@@ -259,10 +295,11 @@ func VerifyOtp(c *gin.Context) {
 		return
 	}
 	user := models.Users{
-		FirstName: signupData.FirstName,
-		LastName:  signupData.LastName,
-		Email:     signupData.Email,
-		Password:  signupData.Password,
+		FirstName:   signupData.FirstName,
+		LastName:    signupData.LastName,
+		PhoneNumber: signupData.PhoneNumber,
+		Email:       signupData.Email,
+		Password:    signupData.Password,
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
@@ -321,8 +358,8 @@ func UserLogin(c *gin.Context) {
 		})
 		return
 	}
-
-	token, err := utils.GenerateToken(userData.Email, userData.Role)
+	fmt.Println(userData)
+	token, err := utils.GenerateToken(userData.ID, userData.Email, userData.Role)
 	if err != nil {
 		c.JSON(500, gin.H{
 			"status":   "error",
@@ -401,10 +438,10 @@ func GoogleCallback(c *gin.Context) {
 	}
 	var exist bool
 	if database.DB.Model(user).Where("email", newUser.Email).Scan(&exist); exist {
-		fmt.Println("user exist")
+		fmt.Println("user email already exist")
 
 	} else {
-		err = database.DB.Model(&user).Save(&user).Error
+		err = database.DB.Model(&user).Create(&user).Error
 		if err != nil {
 			c.JSON(500, gin.H{
 				"error": "failed add the details in the database",
@@ -412,8 +449,13 @@ func GoogleCallback(c *gin.Context) {
 			return
 		}
 	}
+	var CreatedUser models.Users
+	if err := database.DB.Where("email=?", newUser.Email).First(&CreatedUser); err != nil {
+		c.JSON(500, gin.H{"error": "database error"})
+		return
+	}
 
-	Authtoken, err := utils.GenerateToken(newUser.Email, "user")
+	Authtoken, err := utils.GenerateToken(CreatedUser.ID, CreatedUser.Email, CreatedUser.Role)
 	if err != nil {
 		c.JSON(500, gin.H{
 			"deatails": "failed to create authentication token",
@@ -428,4 +470,3 @@ func GoogleCallback(c *gin.Context) {
 	})
 
 }
-

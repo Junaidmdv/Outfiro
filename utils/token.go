@@ -1,22 +1,21 @@
 package utils
 
 import (
-	"errors"
-	
 	"os"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
 type JwtClaims struct {
-	Email string `json:"email"`
+	UserId int    `json:"user_id"`
+	Email  string `json:"email"`
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(Email string, Role string) (string, error) {
+func GenerateToken(id uint, Email string, Role string) (string, error) {
 	claims := JwtClaims{
+		UserId: int(id),
 		Email: Email,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    Role,
@@ -30,32 +29,4 @@ func GenerateToken(Email string, Role string) (string, error) {
 	}
 
 	return SignedToken, nil
-}
-
-func ValidateToken(SingnedToken string, c *gin.Context) (Claims *JwtClaims, err error) {
-	token, err := jwt.ParseWithClaims(SingnedToken,
-		&JwtClaims{},
-		func(token *jwt.Token) (interface{}, error) {
-			return []byte(os.Getenv("TOKEN_SECRETE_KEY")), nil
-		})
-	if err != nil {
-		return
-	}
-	claims, ok := token.Claims.(*JwtClaims)
-	if !ok {
-		return
-	}
-	if claims.ExpiresAt != nil && claims.ExpiresAt.Before(time.Now()) {
-		err = errors.New("token exprired")
-		return
-	}
-	if claims.Email == " " {
-		err=errors.New("invalid claims")
-	}
-	if claims.Issuer== " "{
-		 err=errors.New("invalid claims")
-	}
-	c.Set("Issuer", claims.Issuer)
-	
-	return
 }

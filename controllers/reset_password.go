@@ -1,14 +1,17 @@
 package controllers
-import ("github.com/gin-gonic/gin"
-       "github.com/go-playground/validator/v10"
-	   "net/http"
-	    "outfiro/utils"
-		"outfiro/models"
-		 "outfiro/database"
-		 "gorm.io/gorm"
-		 "time"
-		 "strings"
-		 "fmt"
+
+import (
+	"fmt"
+	"net/http"
+	"outfiro/database"
+	"outfiro/models"
+	"outfiro/utils"
+	"strings"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
+	"gorm.io/gorm"
 )
 
 func PasswordSendOtp(c *gin.Context) {
@@ -135,7 +138,6 @@ func ResetPassword(c *gin.Context) {
 		})
 		return
 	}
-	fmt.Println("hello")
 	var otp models.OtpRecord
 	result := database.DB.Where("email=?", newPassword.Email).First(&otp)
 	if result.Error != nil {
@@ -160,6 +162,7 @@ func ResetPassword(c *gin.Context) {
 		return
 	}
 	validate := validator.New()
+	validate.RegisterValidation("password", utils.ValidPassword)
 	if err := validate.Struct(&newPassword); err != nil {
 		errors := utils.UserFormateError(err.(validator.ValidationErrors))
 		c.JSON(400, gin.H{
