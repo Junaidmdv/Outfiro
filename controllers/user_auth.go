@@ -22,7 +22,7 @@ var (
 	ErrEmailExist     = errors.New("email already existed")
 	ErrPasswordLength = errors.New("password should be 8 charectar long")
 	ErrInternalServer = errors.New("internal server error")
-	OtpExpirePeriod   = 2
+	OtpExpirePeriod   = 5
 )
 
 func UserSignup(c *gin.Context) {
@@ -36,21 +36,6 @@ func UserSignup(c *gin.Context) {
 		})
 		return
 	}
-	// if result := utils.IsEmailValid(usersignup.Email); !result {
-	// 	c.JSON(400, gin.H{
-	// 		"error": "Invalid email formate",
-	// 	})
-	// 	return
-	// }
-
-	// if len(usersignup.Password) < 8 {
-	// 	c.JSON(400, gin.H{
-	// 		"status":  "error",
-	// 		"code":    400,
-	// 		"details": "Password must be atleast 8 charectar long",
-	// 	})
-	// 	return
-	// }
 	validate := validator.New()
 	validate.RegisterValidation("phone_number", utils.ValidPhoneNum)
 	validate.RegisterValidation("password", utils.ValidPassword)
@@ -140,6 +125,23 @@ func UserSignup(c *gin.Context) {
 		})
 		return
 	}
+	//validation for referal code
+	if usersignup.ReferedCode != "" {
+		var exist bool
+		if err := database.DB.Model(models.Users{}).Select("COUNT(*)>0").
+			Where("referral_code=?", usersignup.ReferedCode).
+			Scan(&exist).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+			return
+		}
+
+		if !exist {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Invalid referal code"})
+			return
+		}
+
+	}
+
 	HashedPassword, err := utils.HashPassword(usersignup.Password)
 	if err != nil {
 		c.JSON(500, gin.H{
@@ -181,7 +183,7 @@ func UserSignup(c *gin.Context) {
 
 	if err := database.DB.Create(&otpRecord).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to add the otp data",
+			"error": fmt.Sprintf("Failed to add the otp data %v",err.Error()),
 		})
 		return
 	}
@@ -295,17 +297,37 @@ func VerifyOtp(c *gin.Context) {
 		return
 	}
 	user := models.Users{
-		FirstName:   signupData.FirstName,
-		LastName:    signupData.LastName,
-		PhoneNumber: signupData.PhoneNumber,
-		Email:       signupData.Email,
-		Password:    signupData.Password,
+		FirstName:    signupData.FirstName,
+		LastName:     signupData.LastName,
+		PhoneNumber:  signupData.PhoneNumber,
+		Email:        signupData.Email,
+		Password:     signupData.Password,
+		ReferredCode: signupData.ReferedCode,
 	}
+	user.ReferralCode = utils.GenerateReferralCode()
 
 	if err := database.DB.Create(&user).Error; err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
+
+	//adding referral point to the referred user
+	if signupData.ReferedCode != "" {
+		result = database.DB.Model(&models.Users{}).
+			Where("referral_code=?", signupData.ReferedCode).
+			Update("referral_point", gorm.Expr("referral_point + ?", models.ReferralPoints))
+
+		if result.Error != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed update the referal points"})
+			return
+		}
+
+		if result.RowsAffected == 0 {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Failed to update the referal points"})
+			return
+		}
+	}
+
 	if err := database.DB.Unscoped().Where("email", verifyotp.Email).Delete(&signupData).Error; err != nil {
 		c.JSON(500, gin.H{
 			"error": "error delete the user signup data",

@@ -92,7 +92,7 @@ func BlockUser(c *gin.Context) {
 			return
 		}
 	}
-	if !user.IsBlocked {
+	if user.IsBlocked {
 		c.JSON(400, gin.H{
 			"status":  "error",
 			"code":    400,
@@ -100,15 +100,15 @@ func BlockUser(c *gin.Context) {
 		})
 		return
 	}
-	user.IsBlocked = false
+	user.IsBlocked = true
 
-	if err := database.DB.Model(&user).Update("is_blocked", false).Error; err != nil {
+	if err := database.DB.Model(&user).Update("is_blocked", true).Error; err != nil {
 		c.JSON(500, gin.H{"error": "failed to block the user"})
 		return
 	}
 	c.JSON(200, gin.H{
 		"status":  "success",
-		"message": "user account unblocked",
+		"message": "user account blocked",
 	})
 }
 
@@ -133,7 +133,7 @@ func UnblockUsers(c *gin.Context) {
 			return
 		}
 	}
-	if user.IsBlocked {
+	if !user.IsBlocked {
 		c.JSON(400, gin.H{
 			"status":  "error",
 			"code":    400,
@@ -141,7 +141,6 @@ func UnblockUsers(c *gin.Context) {
 		})
 		return
 	}
-
 	if err := database.DB.Model(&user).Update("is_blocked", false).Error; err != nil {
 		c.JSON(500, gin.H{"error": "failed to block the user"})
 		return

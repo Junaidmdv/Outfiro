@@ -139,20 +139,36 @@ func GetCart(c *gin.Context) {
 		})
 		return
 	}
+	var cartTotal float64
+	var cartTotalDiscount float64
+	var NetTotalCart float64
+
+	for _, item := range cartItems {
+		Totalcart := item.Price * float64(item.Quantity)
+		TotalDiscountCart := item.Price * float64(item.Quantity) * item.Discount / 100
+		NetTotal := Totalcart - TotalDiscountCart
+
+		cartTotal += Totalcart
+		cartTotalDiscount += TotalDiscountCart
+		NetTotalCart += NetTotal
+
+	}
 
 	c.JSON(200, gin.H{
 		"status":  "success",
 		"details": "cart item fetched",
 		"data": gin.H{
-			"user_email": user.Email,
-			"cart items": cartItems,
+			"user_email":            user.Email,
+			"Total Price":           cartTotal,
+			"Total Discount offers": cartTotalDiscount,
+			"Net total price":       NetTotalCart,
+			"cart items":            cartItems,
 		},
 	})
 
 }
-
 func EditCart(c *gin.Context) {
-	_, exist := c.Get("user_id")
+	UserID, exist := c.Get("user_id")
 	if !exist {
 		c.JSON(http.StatusForbidden, gin.H{"error": "user id is missing"})
 		c.Abort()
@@ -182,9 +198,27 @@ func EditCart(c *gin.Context) {
 		return
 	}
 	var cart models.CartItems
+	result := database.DB.Model(&models.CartItems{}).Where("id=? AND users_id=?", cartItemID, UserID).First(&cart)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			c.JSON(403, gin.H{"error": "cart id is not found"})
+			return
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "data base error"})
+			return
+		}
+	}
+	var quantity uint
+	database.DB.Model(&models.Products{}).Where("id=?", cart.ProductID).Pluck("stock_quantity", &quantity)
+	stockLeft := int(quantity) - Editcart.Quantity
 
-	if err := database.DB.Model(&cart).Where("id=?", cartItemID).Update("quantity", Editcart.Quantity).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed update cart"})
+	if stockLeft < 0 {
+		c.JSON(400, gin.H{"error": fmt.Sprintf("The requested stock is not availible.Only %d stock is availible", quantity)})
+		return
+	}
+	cart.Quantity = Editcart.Quantity
+	if err := database.DB.Save(&cart).Error; err != nil {
+		c.JSON(500, gin.H{"error": "database error"})
 		return
 	}
 

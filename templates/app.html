@@ -1,0 +1,172 @@
+
+<!-- templates/payment.html -->
+<!-- <!DOCTYPE html>
+<html>
+<head>
+    <title>RazorPay intergration</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+    <button id="pay-button">Pay Now</button>
+
+    <script>
+        document.getElementById('pay-button').onclick = async function() {
+            // First create an order
+            const response = await fetch('/api/v1/user/order/payment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    amount: 50000, // Amount in paise (e.g., 50000 paise = ₹500)
+                    currency: "INR",
+                    description: "Test Payment"
+                })
+            });
+            
+            const order = await response.json();
+            
+            const options = {
+                key: order.key_id,
+                amount: order.amount,
+                currency: order.currency,
+                name: "Your Company Name",
+                description: "Test Transaction",
+                order_id: order.order_id,
+                handler: async function (response) {
+                    // Verify payment
+                    const verification = await fetch('/api/v1/user/order/payment/verify-payment', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature
+                        })
+                    });
+                    
+                    const result = await verification.json();
+                    if (result.status === 'success') {
+                        alert('Payment successful!');
+                    } else {
+                        alert('Payment verification failed');
+                    }
+                },
+                prefill: {
+                    name: "Test User",
+                    email: "test@example.com",
+                    contact: "9999999999"
+                },
+                theme: {
+                    color: "#3399cc"
+                }
+            };
+            
+            const rzp1 = new Razorpay(options);
+            rzp1.open();
+        };
+    </script>
+</body>
+</html> -->
+
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RazorPay Integration</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+    <button id="pay-button">Pay Now</button>
+
+    <script>
+        document.getElementById('pay-button').onclick = async function() {
+            // First create an order
+            const response = await fetch('/api/v1/user/order/payment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    amount: 50000, // Amount in paise (e.g., 50000 paise = ₹500)
+                    currency: "INR",
+                    description: "Test Payment"
+                })
+            });
+            
+            const order = await response.json();
+            
+            const options = {
+                key: order.key_id,
+                amount: order.amount,
+                currency: order.currency,
+                name: "Your Company Name",
+                description: "Test Transaction",
+                order_id: order.order_id,
+                handler: async function (response) {
+                    // Verify payment on success
+                    const verification = await fetch('/api/v1/user/order/payment/verify-payment', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature
+                        })
+                    });
+                    
+                    const result = await verification.json();
+                    if (result.status === 'success') {
+                        alert('Payment successful!');
+                    } else {
+                        alert('Payment verification failed');
+                        callFailedPayment();  // Call the failed payment function
+                    }
+                },
+                // Failure callback when modal is dismissed
+                modal: {
+                    ondismiss: function() {
+                        alert('Payment failed or was canceled.');
+                        callFailedPayment();  // Call the failed payment function
+                    }
+                },
+                prefill: {
+                    name: "Test User",
+                    email: "test@example.com",
+                    contact: "9999999999"
+                },
+                theme: {
+                    color: "#3399cc"
+                }
+            };
+            
+            const rzp1 = new Razorpay(options);
+            rzp1.open();
+        };
+
+        
+        async function callFailedPayment() {
+            console.log("Payment failed. Calling failed payment endpoint...");
+
+            
+            await fetch('/api/v1/user/order/payment/failed-payment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: 'Payment failed during the process or was canceled by the user'
+                })
+            });
+
+            alert('Payment failed. We have logged the issue.');
+        }
+    </script>
+</body>
+</html>

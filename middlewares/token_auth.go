@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"outfiro/utils"
@@ -61,9 +60,8 @@ func AuthMidleware() gin.HandlerFunc {
 			})
 			return
 		}
-		fmt.Println("claims", claim)
 		if claim.UserId == 0 {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid claims"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid user id login again"})
 			return
 		}
 		if claim.Email == "" {

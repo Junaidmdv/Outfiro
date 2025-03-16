@@ -11,7 +11,7 @@ type UpdateCategoryRequest struct {
 	Description    *string `json:"description"`
 }
 type ProductRequest struct {
-	ProductName    string  `json:"name" validate:"required,alpha_space,max=100,min=2"`
+	ProductName    string  `json:"name" validate:"required,max=100,min=2"`
 	ImageUrl       string  `json:"image_url" validate:"required,url"`
 	Description    string  `json:"description" validate:"required"`
 	Discount       int     `json:"discount" validate:"gte=1,lte=100"`
@@ -32,6 +32,7 @@ type SignuPlayload struct {
 	LastName        string `json:"last_name" validate:"required"`
 	Email           string `json:"email" validate:"email,required"`
 	PhoneNumber     string `json:"phone_number" validate:"phone_number"`
+	ReferedCode     string `json:"referral_code" validate:"omitempty,gte=8"`
 	Password        string `json:"password" validate:"password"`
 	ConfirmPassword string `json:"confirm password" validate:"required"`
 }
@@ -72,7 +73,6 @@ type UpadatProduct struct {
 	ProductName   string  `json:"name" validate:"omitempty,min=5,max=50,alpha_space"`
 	Price         float32 `json:"price" validate:"omitempty,numeric,gt=0"`
 	StockQuantity uint    `json:"stock_quantity" validate:"omitempty,numeric,gt=0"`
-	Discount      int     `json:"discount" validate:"omitempty,gte=1,lte=100"`
 }
 type ForgotPassword struct {
 	Email string `json:"email" validate:"email"`
@@ -85,15 +85,26 @@ type ResetPassword struct {
 }
 
 type ProductResponce struct {
-	ID          uint `gorm:"id"`
-	ProductName string
-	Description string
-	Discount    int
-	ImageUrl    string
-	CategoryId  uint
-	Price       float64
-	Size        string
+	ID                uint `gorm:"id"`
+	ProductName       string
+	Description       string
+	Discount          int
+	ImageUrl          string
+	CategoryId        uint
+	Price             float64
+	Size              string
 	QuantityAvailable uint `json:"quantity_available" gorm:"column:stock_quantity"`
+}
+
+type ProductListing struct {
+	ID            uint `gorm:"id"`
+	ProductName   string
+	Discount      int
+	ImageUrl      string
+	Price         float64
+	Size          string
+	StockQuantity uint    `json:"inventory_details"`
+	AvgRating     float64 `json:"avg_rating" gorm:"column:avg_ratings"`
 }
 
 type ProfileUpdate struct {
@@ -104,11 +115,14 @@ type ProfileUpdate struct {
 }
 
 type ProfileResponce struct {
-	ID          uint `gorm:"id"`
-	FirstName   string
-	LastName    string
-	PhoneNumber string
-	Email       string
+	ID            uint `gorm:"id"`
+	FirstName     string
+	LastName      string
+	PhoneNumber   string
+	Email         string
+	ReferralCode  string `gorm:"referral_code"`
+	ReferralPoint uint
+	WallteAmount  float64
 }
 
 type ChangePasswordRequest struct {
@@ -144,29 +158,31 @@ type CartResponce struct {
 type OrderRequest struct {
 	AddressId     uint   `json:"address_id"`
 	PaymentMethod string `json:"payment_method"`
+	CouponCode    string `json:"coupon_code"`
 }
 type CartRequest struct {
 	Quantity int `json:"quantity" binding:"numeric"`
 }
 
 type OrderResponse struct {
-	OrderID       uint      `json:"order_id" gorm:"column:id"`
-	OrderStatus   string    `json:"order_status" gorm:"column:order_status"`
-	TotalQuantity int        `json:"products_quantity" gorm:"column:product_quantity"`
-	OrderTime     time.Time `json:"order_time" gorm:"column:created_at"`
-	TotalAmount   float64   `json:"total_amount" gorm:"column:total_amount"`
-	PaymentMethod string    `json:"payment_method" gorm:"column:payment_method"`
+	OrderID        uint      `json:"order_id" gorm:"column:id"`
+	OrderStatus    string    `json:"order_status" gorm:"column:order_status"`
+	TotalQuantity  int       `json:"products_quantity" gorm:"column:product_quantity"`
+	OrderTime      time.Time `json:"order_time" gorm:"column:created_at"`
+	DeliveryCharge float64   `gorm:"delivery_charge" json:"delivery_charge"`
+	TotalAmount    float64   `json:"total_amount" gorm:"column:total_amount"`
 }
 type OrderItemResponce struct {
-	ProductID   uint    `gorm:"order_items.product_id"`
-	ID          uint    `gorm:"order_items.id"`
-	ProductName string  `gorm:"products.product_name"`
-	Description string  `gorm:"products.description"`
-	ImageUrl    string  `gorm:"products.image_url"`
-	Discount    int     `gorm:"products.discount"`
-	Price       float64 `gorm:"products.price"`
-	Size        string  `gorm:"products.size"`
-	Quantity    int     `gorm:"order_items.quantity"`
+	ProductID       uint    `gorm:"order_items.product_id"`
+	ID              uint    `gorm:"order_items.id" json:"OrderItems_id"`
+	ProductName     string  `gorm:"products.product_name"`
+	Description     string  `gorm:"products.description"`
+	ImageUrl        string  `gorm:"products.image_url"`
+	Discount        int     `gorm:"products.discount"`
+	Price           float64 `gorm:"products.price"`
+	Size            string  `gorm:"products.size"`
+	Quantity        int     `gorm:"order_items.quantity"`
+	OrderItemStatus string  `gorm:"order_item_status" json:"product_status"`
 }
 
 type CartValidation struct {
@@ -190,4 +206,106 @@ type OrderList struct {
 
 type OrderStatusUpdate struct {
 	Status string `json:"order_status"`
+}
+type WishlistResponce struct {
+	ID        uint   `gorm:"id"`
+	ProductID uint   `gorm:"column:product_id" json:"product_id"`
+	Name      string `gorm:"column:product_name" json:"product_name"`
+	Price     string `gorm:"price" json:"price"`
+	Quantity  int    `gorm:"column:stock_quantity" json:"stock quantity"`
+	ImageUrl  string `gorm:"column:image_url"`
+}
+
+// type RazorpayPayment struct {
+// 	OrderID     string
+// 	Email       string
+// 	PhoneNumber string
+// 	TotalAmount float64
+// }
+
+type RazorpayClaims struct {
+	OrderID   string `json:"razorpay_order_id"`
+	PaymentID string `json:"razorpay_payment_id"`
+	Signature string `json:"razorpay_signature"`
+}
+
+type ReferalPoints struct {
+	Amount float64 `json:"referal_points"`
+}
+type CouponUpdate struct {
+	DiscountPercent float64 `json:"discount_rate" validate:"numeric,gt=0"`
+	MinPurchase     float64 `json:"min_purchase" validate:"numeric,gt=0"`
+	UsageLimit      uint    `json:"maximum_limit" validate:"numeric"`
+}
+
+type SalesReportRequest struct {
+	StartDate string `json:"start_date" binding:"omitempty"`
+	EndDate   string `json:"end_date"  binding:"omitempty"`
+	Limit     string `json:"limit"   binding:"omitempty"`
+}
+
+type WalleteResponce struct {
+	Amount         float64
+	Reason         string
+	TransationType string
+}
+
+type ShoppingAddressResponce struct {
+	UserID         uint
+	Address_line_1 string `json:"address_line_1" validate:"required"`
+	Address_line_2 string `json:"address_line_2" validate:"required"`
+	City           string `json:"city" validate:"required,alpha_space"`
+	Pincode        string `json:"pincode" validate:"required,pincode"`
+	Landmark       string `json:"landmark" validate:"required"`
+	Contact_number string `json:"contact_number"  validate:"required,numeric"`
+	State          string `json:"state" validate:"required,alpha_space"`
+	Country        string `json:"country" validate:"required,alpha_space"`
+}
+
+type OfferResponce struct {
+	ProductName string  `json:"name" validate:"required,min=2,max=100,alpha_space"`
+	Description string  `json:"description" validate:"required,min=3,max=100,required"`
+	ImageUrl    string  `json:"image_url"  validate:"required,url"`
+	Discount    float64 `json:"discount_offer" gorm:"default=0"`
+	CategoryId  uint    `json:"categoryid" binding:"required"`
+	Price       float64 `json:"price" binding:"required" validate:"numeric,gt=0,required "`
+	Size        string  `json:"size" binding:"required"`
+}
+
+type BestSellingProduct struct {
+	ProductID   uint
+	ProductName string
+	ImageUrl    string
+	Price       float64
+	ProductSold uint
+}
+
+type BestSellingCategories struct {
+	ID           uint   `json:"ID" gorm:"column:category_id"`
+	CategoryName string `json:"name"`
+	Description  string `json:"description"`
+	ProductSold  uint   `json:"total_sales" gorm:"column:total_product_sold"`
+}
+
+type ReviewRequest struct {
+	Rating   float64 `json:"rating" validate:"omitempty,gte=1,lte=5"`
+	Comments string  `json:"comments" validate:"omitempty,min=2,max=100"`
+}
+
+type ReviewResponce struct {
+	ID         uint
+	UserName   string
+	Rating     float64
+	Comments   string
+	Created_at string
+}
+
+type SaleGraphData struct {
+	Date  string `gorm:"column:date"`
+	Sales string `gorm:"column:sales"`
+}
+
+type PaymentResponce struct {
+	PaymentStatus string `json:"payment_status"`
+	PaymentMethod string `json:"payment_method"`
 }

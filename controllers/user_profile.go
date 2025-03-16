@@ -147,7 +147,7 @@ func ChangePassword(c *gin.Context) {
 		})
 		return
 	}
-	fmt.Println(user.Password)
+
 	if err := utils.VerifyPassword(user.Password, changePassword.CurrentPassword); err != nil {
 		c.JSON(400, gin.H{"error": "Invalid current password.Please try valid password"})
 		return
@@ -171,3 +171,46 @@ func ChangePassword(c *gin.Context) {
 	})
 
 }
+
+func AddReferralPointsToWallet(c *gin.Context) {
+	userId, _ := c.Get("user_id")
+	fmt.Printf("%t", userId)
+	userID, ok := userId.(int)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user id"})
+		return
+	}
+	var user models.Users
+	if err := database.DB.Model(&models.Users{}).Where("id=?", userID).First(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database errror"})
+		return
+	}
+	ReferalAmount := float64(user.ReferralPoint) / models.ReferalPointsUnit
+	
+	if user.ReferralPoint < int(models.MinReffaralPoint) {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": fmt.Sprintf("You need at least %f referral points to convert to cash", models.MinReffaralPoint)})
+	}
+	
+
+	walletrecord := models.WalleteHistory{
+		UserID:         uint(userID),
+		Amount:         ReferalAmount,
+		Reason:         models.RefferalOffer,
+		TransationType: models.CashCredited,
+	}
+	user.WallteAmount += ReferalAmount
+	user.ReferralPoint = 0
+	database.DB.Save(&user)
+
+	database.DB.Create(&walletrecord)
+	c.JSON(200, gin.H{
+		"status":   "success",
+		"deatails": "Refferal cash bonus added to the wallete",
+		"data": gin.H{
+			"wallete_amount": user.WallteAmount,
+			"referal_points": user.ReferralPoint,
+		},
+	})
+
+}
+

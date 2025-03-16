@@ -20,20 +20,24 @@ import (
 // )
 
 func GetProducts(c *gin.Context) {
-	var products models.Products
-	var productsRes []models.ProductResponce
-	if err := database.DB.Model(&products).Find(&productsRes).Error; err != nil {
-		c.JSON(500, gin.H{
-			"error": "fail to fetch the product",
-		})
+
+	var ProductResponce []models.ProductListing
+
+	if err := database.DB.Model(&models.Products{}).
+		Select("products.id,products.product_name,products.discount,products.image_url,products.price,products.size,products.stock_quantity,Avg(reviews.rating) as avg_ratings").
+		Joins("LEFT JOIN reviews ON products.id=reviews.product_id").
+		Group("products.id").
+		Find(&ProductResponce).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
 		return
 	}
+	fmt.Println(ProductResponce)
 
 	c.JSON(200, gin.H{
 		"status":  "success",
 		"message": "product succesfully fetched",
 		"data": gin.H{
-			"product": productsRes,
+			"product": ProductResponce,
 		},
 	})
 }
@@ -140,7 +144,6 @@ func EditProduct(c *gin.Context) {
 		}
 		return
 	}
-	fmt.Println(product)
 
 	var update models.UpadatProduct
 	if err := c.BindJSON(&update); err != nil {
@@ -161,7 +164,6 @@ func EditProduct(c *gin.Context) {
 		})
 		return
 	}
-	fmt.Println(update)
 
 	updateProduct := make(map[string]interface{})
 
@@ -174,9 +176,6 @@ func EditProduct(c *gin.Context) {
 	}
 	if update.StockQuantity != 0 {
 		updateProduct["stock_quantity"] = update.StockQuantity
-	}
-	if update.Discount != 0 {
-		updateProduct["discount"] = update.Discount
 	}
 
 	if len(updateProduct) == 0 {
@@ -240,7 +239,6 @@ func AddProduct(c *gin.Context) {
 
 	if count > 0 {
 		c.JSON(http.StatusConflict, gin.H{
-
 			"status":  "error",
 			"code":    "StatusConflict(409)",
 			"message": "product already exist",
@@ -248,7 +246,6 @@ func AddProduct(c *gin.Context) {
 		return
 	}
 
-	fmt.Println(req.CategoriesName)
 	if err := database.DB.Where("category_name=?", req.CategoriesName).First(&category).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(400, gin.H{"error": "category not availible"})
@@ -261,7 +258,6 @@ func AddProduct(c *gin.Context) {
 		ProductName:   req.ProductName,
 		Description:   req.Description,
 		CategoryId:    category.ID,
-		Discount:      req.Discount,
 		Price:         req.Price,
 		Size:          req.Size,
 		StockQuantity: req.StockQuantity,
@@ -290,6 +286,7 @@ func SearchProduct(c *gin.Context) {
 	var products []models.ProductResponce
 	result := database.DB.Model(&models.Products{}).Where("products.product_name LIKE ? OR products.description LIKE ? OR categories.category_name LIKE ?",
 		"%"+query+"%", "%"+query+"%", "%"+query+"%").
+
 		Joins("JOIN categories ON products.category_id = categories.id").
 		Find(&products)
 	fmt.Println(result)
@@ -368,7 +365,7 @@ func FilterProduct(c *gin.Context) {
 			c.JSON(500, gin.H{"error": "Failed to fetch product data"})
 			return
 		}
-		
+
 		Product = *ProductPtr
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid queri"})

@@ -15,9 +15,10 @@ import (
 func OrdersList(c *gin.Context) {
 	var orders []models.OrderList
 
-	if err := database.DB.Model(&models.Order{}).Select("orders.user_id,users.email,orders.id,orders.product_quantity,orders.total_amount,orders.payment_method,orders.payment_status,orders.order_status,orders.created_at").
+	if err := database.DB.Model(&models.Order{}).
+		Select("orders.user_id,users.email,orders.id,orders.order_status,orders.product_quantity,orders.created_at,orders.total_amount,payments.payment_method,payments.payment_status").
+		Joins("JOIN payments ON orders.id=payments.order_id").
 		Joins("JOIN users ON orders.user_id=users.id").
-		Order("orders.created_at DESC").
 		Find(&orders).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
 		return
@@ -64,9 +65,6 @@ func ChangeOrderStaus(c *gin.Context) {
 		return
 	}
 
-	if orderStatus.Status == models.Delivered {
-		order.PaymentStatus = models.PaymentPaid
-	}
 	if orderStatus.Status == models.Cancelled {
 		var order []models.OrderItem
 		result = database.DB.Model(&order).Where("order_id", order_id).Find(&order)
