@@ -14,7 +14,6 @@ type ProductRequest struct {
 	ProductName    string  `json:"name" validate:"required,max=100,min=2"`
 	ImageUrl       string  `json:"image_url" validate:"required,url"`
 	Description    string  `json:"description" validate:"required"`
-	Discount       int     `json:"discount" validate:"gte=1,lte=100"`
 	CategoriesName string  `json:"category_name" binding:"required"`
 	Price          float64 `json:"price" validate:"required,numeric,gt=0"`
 	Size           string  `json:"size" validate:"required,oneof='M''XL''L''S'"`
