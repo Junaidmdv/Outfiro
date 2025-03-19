@@ -399,7 +399,6 @@ func UserLogin(c *gin.Context) {
 }
 
 func GoogleLogin(c *gin.Context) {
-	fmt.Println("Hellow google")
 	GoogleAuthConfig := utils.GoogleConfig()
 	url := GoogleAuthConfig.AuthCodeURL("state")
 	c.Redirect(http.StatusTemporaryRedirect, url)
@@ -472,7 +471,7 @@ func GoogleCallback(c *gin.Context) {
 		}
 	}
 	var CreatedUser models.Users
-	if err := database.DB.Where("email=?", newUser.Email).First(&CreatedUser); err != nil {
+	if err := database.DB.Where("email=?", newUser.Email).First(&CreatedUser).Error; err != nil {
 		c.JSON(500, gin.H{"error": "database error"})
 		return
 	}

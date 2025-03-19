@@ -25,6 +25,7 @@ func GetCategories(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"status":  "success",
 		"message": "categories fetched succesfully",
+		"Review":"test",
 		"data": gin.H{
 			"categories": categories,
 		},
