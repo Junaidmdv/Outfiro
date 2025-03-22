@@ -13,8 +13,8 @@ func AdminRoutes(routes *gin.Engine) {
 		//admin authentication
 		admin.POST("/singup", controllers.AdminSignup)
 		admin.POST("/login", controllers.AdminLogin)
-		admin.Use(middleware.AuthMidleware())
-		admin.Use(middleware.ProtectedRoutes())
+		// admin.Use(middleware.AuthMidleware())
+		// admin.Use(middleware.ProtectedRoutes())
 
 		//admin dashoboard
 		admin.GET("/dashoboard/sales-details", controllers.GetSalesData)

@@ -37,6 +37,7 @@ func UserSignup(c *gin.Context) {
 		return
 	}
 	validate := validator.New()
+	validate.RegisterValidation("validname", utils.ValidName)
 	validate.RegisterValidation("phone_number", utils.ValidPhoneNum)
 	validate.RegisterValidation("password", utils.ValidPassword)
 	if err := validate.Struct(&usersignup); err != nil {
@@ -183,7 +184,7 @@ func UserSignup(c *gin.Context) {
 
 	if err := database.DB.Create(&otpRecord).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": fmt.Sprintf("Failed to add the otp data %v",err.Error()),
+			"error": fmt.Sprintf("Failed to add the otp data %v", err.Error()),
 		})
 		return
 	}

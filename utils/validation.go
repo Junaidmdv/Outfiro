@@ -13,10 +13,15 @@ var regexPhoneNum = regexp.MustCompile(`^(\+91|0)?[6-9][0-9]{9}$`)
 var regexPincode = regexp.MustCompile(`^[1-9][0-9]{5}$`)
 var regexPassword = regexp.MustCompile(`^[A-Za-z\d@$!%*?&]{8,}$`)
 
+var regexName = regexp.MustCompile(`^[a-zA-Z ]+$`)
+
 func UserFormateError(errs validator.ValidationErrors) []string {
 	var ErrorMessage []string
 	for _, err := range errs {
+
 		switch err.Tag() {
+		case "validname":
+			ErrorMessage = append(ErrorMessage, fmt.Sprintf("Invalid %s",err.Field()))
 		case "required":
 			ErrorMessage = append(ErrorMessage, fmt.Sprintf("%s field is  required", err.Field()))
 		case "email":
@@ -65,6 +70,9 @@ func ValidPincode(fl validator.FieldLevel) bool {
 func ValidPassword(fl validator.FieldLevel) bool {
 	return regexPassword.MatchString(fl.Field().String())
 }
+func ValidName(fl validator.FieldLevel) bool {
+	return regexName.MatchString(fl.Field().String())
+}
 
 func ValidationOrderStatus(current_status string, newstatus string) error {
 	//pending return
@@ -96,5 +104,5 @@ func ValidationOrderStatus(current_status string, newstatus string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("%s can't be changed to %s",  current_status,newstatus)
+	return fmt.Errorf("%s can't be changed to %s", current_status, newstatus)
 }

@@ -7,7 +7,7 @@ import (
 	"outfiro/models"
 	"outfiro/utils"
 	"strconv"
-
+    "fmt"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -120,7 +120,8 @@ func OrderItemList(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
 			return
 		}
-	}
+	} 
+	fmt.Println("Add some idea")
 	c.JSON(200, gin.H{
 		"status":  "success",
 		"details": "order item retrived",

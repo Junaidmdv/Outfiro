@@ -27,8 +27,8 @@ type AdminLogin struct {
 
 type SignuPlayload struct {
 	gorm.Model
-	FirstName       string `json:"name" validate:"required"`
-	LastName        string `json:"last_name" validate:"required"`
+	FirstName       string `json:"name" validate:"required,validname"`
+	LastName        string `json:"last_name" validate:"required,validname"`
 	Email           string `json:"email" validate:"email,required"`
 	PhoneNumber     string `json:"phone_number" validate:"phone_number"`
 	ReferedCode     string `json:"referral_code" validate:"omitempty,gte=8"`
