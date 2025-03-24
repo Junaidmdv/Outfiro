@@ -74,7 +74,7 @@ func BlockUser(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "user id is not availible"})
 		return
 	}
-	fmt.Println("userIdStr")
+	
 	user_id, err := strconv.Atoi(userIdStr)
 	fmt.Println(user_id)
 	if err != nil {

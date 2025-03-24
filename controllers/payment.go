@@ -24,9 +24,15 @@ func RenderRazorpay(c *gin.Context) {
 var RazorPayOrderID string
 
 func RazapayPayment(c *gin.Context) {
-	
-	orderID := OID
-	fmt.Println(OID)
+
+	// orderID := OID
+	orderId := c.Query("order_id")
+	orderID, err := strconv.Atoi(orderId)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid order id"})
+		return
+	}
+
 	var order models.Order
 	result := database.DB.Model(&models.Order{}).Preload("Payment").First(&order, orderID)
 	if result.Error != nil {
@@ -47,7 +53,7 @@ func RazapayPayment(c *gin.Context) {
 	AmountInPaisa := utils.RoundFloat(order.TotalAmount) * 100
 	OrderIDstr := strconv.Itoa(int(orderID))
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"amount":          AmountInPaisa,
 		"currency":        "INR",
 		"receipt":         OrderIDstr,
@@ -63,7 +69,6 @@ func RazapayPayment(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create order"})
 		return
 	}
-	fmt.Println(cleint)
 
 	Responce := models.RazorpayResponce{
 		OrderID:  body["id"].(string),
@@ -71,7 +76,6 @@ func RazapayPayment(c *gin.Context) {
 		Currency: "INR",
 		KeyID:    os.Getenv("RAZORPAY_KEYID"),
 	}
-	fmt.Println(Responce)
 	RazorPayOrderID = body["receipt"].(string)
 	c.JSON(http.StatusOK, Responce)
 

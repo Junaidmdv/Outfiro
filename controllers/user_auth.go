@@ -72,7 +72,7 @@ func UserSignup(c *gin.Context) {
 		})
 		return
 	}
-	fmt.Println(userExist)
+	
 	if userExist {
 		c.JSON(409, gin.H{
 			"status":  "error",
@@ -95,7 +95,7 @@ func UserSignup(c *gin.Context) {
 		})
 		return
 	}
-	fmt.Println(NumExist)
+	
 	if NumExist {
 		c.JSON(409, gin.H{
 			"status":  "error",
@@ -117,7 +117,7 @@ func UserSignup(c *gin.Context) {
 		})
 		return
 	}
-	fmt.Println(userExist)
+	
 	if AdminExist {
 		c.JSON(409, gin.H{
 			"status":  "error",
@@ -222,7 +222,7 @@ func ResendOtp(c *gin.Context) {
 			return
 		}
 	}
-	fmt.Println(ResendOtp)
+	
 	if time.Now().Before(ResendOtp.ExpiryTime) {
 		c.JSON(400, gin.H{
 			"error": "otp already sent",
@@ -381,7 +381,7 @@ func UserLogin(c *gin.Context) {
 		})
 		return
 	}
-	fmt.Println(userData)
+	
 	token, err := utils.GenerateToken(userData.ID, userData.Email, userData.Role)
 	if err != nil {
 		c.JSON(500, gin.H{
@@ -460,8 +460,8 @@ func GoogleCallback(c *gin.Context) {
 	}
 	var exist bool
 	if database.DB.Model(user).Where("email", newUser.Email).Scan(&exist); exist {
-		fmt.Println("user email already exist")
-
+	     c.JSON(409,gin.H{"error":"user email already exist try defferent user id"})
+		 return
 	} else {
 		err = database.DB.Model(&user).Create(&user).Error
 		if err != nil {
