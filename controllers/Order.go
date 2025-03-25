@@ -13,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// var OID uint
+var OID uint
 
 func PlaceOrder(c *gin.Context) {
 	user_id, _ := c.Get("user_id")
@@ -194,7 +194,7 @@ func PlaceOrder(c *gin.Context) {
 	if orderReq.PaymentMethod == models.Online_payment {
 		payment.PaymentMethod = models.Online_payment
 		payment.PaymentStatus = models.PaymentPending
-		// OID = order.ID
+		OID = order.ID
 	}
 
 	//Wallete payment//

@@ -278,39 +278,14 @@ func AddProduct(c *gin.Context) {
 
 func SearchProduct(c *gin.Context) {
 	query := c.Query("product")
-	if query == "" {
-		c.JSON(400, gin.H{"error": "queri paramters required"})
-		return
-	}
-	fmt.Println(query)
+	
+
 	var products []models.ProductResponce
-	result := database.DB.Model(&models.Products{}).Where("products.product_name LIKE ? OR products.description LIKE ? OR categories.category_name LIKE ?",
+	if err := database.DB.Model(&models.Products{}).Where("products.product_name LIKE ? OR products.description LIKE ? OR categories.category_name LIKE ?",
 		"%"+query+"%", "%"+query+"%", "%"+query+"%").
-
 		Joins("JOIN categories ON products.category_id = categories.id").
-		Find(&products)
-	fmt.Println(result)
-
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			c.JSON(404, gin.H{
-				"status":  "error",
-				"code":    "StatusNotFound",
-				"message": "product not found",
-			})
-			return
-		} else {
-			c.JSON(500, gin.H{"error": "Error searching for products"})
-			return
-		}
-
-	}
-	if len(products) == 0 {
-		c.JSON(404, gin.H{
-			"status":  "error",
-			"code":    "StatusNotFound(404)",
-			"message": "Product is found",
-		})
+		Find(&products).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
 		return
 	}
 

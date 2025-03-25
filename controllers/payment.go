@@ -25,13 +25,13 @@ var RazorPayOrderID string
 
 func RazapayPayment(c *gin.Context) {
 
-	// orderID := OID
-	orderId := c.Query("order_id")
-	orderID, err := strconv.Atoi(orderId)
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid order id"})
-		return
-	}
+	orderID := OID
+	// orderId := c.Query("order_id")
+	// orderID, err := strconv.Atoi(orderId)
+	// if err != nil {
+	// 	c.JSON(400, gin.H{"error": "invalid order id"})
+	// 	return
+	// }
 
 	var order models.Order
 	result := database.DB.Model(&models.Order{}).Preload("Payment").First(&order, orderID)
