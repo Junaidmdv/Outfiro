@@ -72,7 +72,7 @@ func UserSignup(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	if userExist {
 		c.JSON(409, gin.H{
 			"status":  "error",
@@ -95,7 +95,7 @@ func UserSignup(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	if NumExist {
 		c.JSON(409, gin.H{
 			"status":  "error",
@@ -117,7 +117,7 @@ func UserSignup(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	if AdminExist {
 		c.JSON(409, gin.H{
 			"status":  "error",
@@ -222,7 +222,7 @@ func ResendOtp(c *gin.Context) {
 			return
 		}
 	}
-	
+
 	if time.Now().Before(ResendOtp.ExpiryTime) {
 		c.JSON(400, gin.H{
 			"error": "otp already sent",
@@ -381,7 +381,7 @@ func UserLogin(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	token, err := utils.GenerateToken(userData.ID, userData.Email, userData.Role)
 	if err != nil {
 		c.JSON(500, gin.H{
@@ -402,7 +402,7 @@ func UserLogin(c *gin.Context) {
 func GoogleLogin(c *gin.Context) {
 	GoogleAuthConfig := utils.GoogleConfig()
 	url := GoogleAuthConfig.AuthCodeURL("state")
-    fmt.Println(url)
+	fmt.Println(url)
 	c.Redirect(http.StatusTemporaryRedirect, url)
 
 }
@@ -460,39 +460,20 @@ func GoogleCallback(c *gin.Context) {
 		LoginType: "google",
 	}
 	var exist bool
-	// if database.DB.Model(user).Where("email", newUser.Email).Scan(&exist); exist {
-	//      c.JSON(409,gin.H{"error":"user email already exist try defferent user id"})
-	// 	 return
-	// } else {
-	// 	err = database.DB.Model(&user).Create(&user).Error
-	// 	if err != nil {
-	// 		c.JSON(500, gin.H{
-	// 			"error": "failed add the details in the database",
-	// 		})
-	// 		return
-	// 	}
-	// }
+	
 	if err := database.DB.Model(user).
-			Select("count(*) > 0").
-			Where("email=?", user.Email).
-			Scan(&exist).Error; err != nil {
-			c.JSON(500, gin.H{
-				"status":  "error",
-				"code":    500,
-				"message": "Unexpected error occur on processing the request",
-			})
-			return
-	
-		}
-		if exist {
-			c.JSON(400, gin.H{
-				"status":  "error",
-				"code":    409,
-				"message": "User already exist in the database",
-			})
-			return
-		}
-	
+		Select("count(*) > 0").
+		Where("email=?", user.Email).
+		Scan(&exist).Error; err != nil {
+		c.JSON(500, gin.H{
+			"status":  "error",
+			"code":    500,
+			"message": "Unexpected error occur on processing the request",
+		})
+		return
+
+	}
+	if !exist {
 		if err := database.DB.Create(&user).Error; err != nil {
 			c.JSON(500, gin.H{
 				"status":  "error",
@@ -501,8 +482,8 @@ func GoogleCallback(c *gin.Context) {
 			})
 			return
 		}
+	}
 
-	
 	var CreatedUser models.Users
 	if err := database.DB.Where("email=?", newUser.Email).First(&CreatedUser).Error; err != nil {
 		c.JSON(500, gin.H{"error": "database error"})
